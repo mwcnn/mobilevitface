@@ -36,7 +36,7 @@ class AdaFace(Module):
     def __init__(self, embedding_size, classnum, device_id, m=0.4, h=0.333, s=64., t_alpha=1.0):
         super(AdaFace, self).__init__()
         self.classnum = classnum
-        self.kernel = Parameter(torch.Tensor(embedding_size,classnum))
+        self.kernel = Parameter(torch.Tensor(embedding_size, classnum))
         self.device_id = device_id
 
         # initial kernel
@@ -129,7 +129,7 @@ class CosFace(nn.Module):
         self.weight = Parameter(torch.FloatTensor(classnum, embedding_size))
         nn.init.xavier_uniform_(self.weight)
 
-    def forward(self, input, label):
+    def forward(self, input, norms, label):
         # --------------------------- cos(theta) & phi(theta) ---------------------------
 
         if self.device_id == None:
@@ -198,7 +198,7 @@ class ArcFace(nn.Module):
         self.th = math.cos(math.pi - m)
         self.mm = math.sin(math.pi - m) * m
 
-    def forward(self, input, label):
+    def forward(self, input, norms, label):
         # --------------------------- cos(theta) & phi(theta) ---------------------------
         if self.device_id == None:
             cosine = F.linear(F.normalize(input), F.normalize(self.weight))

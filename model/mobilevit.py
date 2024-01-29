@@ -230,7 +230,7 @@ class MobileViT(nn.Module):
         
         norm = torch.norm(x, 2, 1, True)
         output = torch.div(x, norm)
-        return output, norm
+        return x, norm
 
 
 def mobilevit_xxs(input, num_emb, defian_layer):
@@ -258,19 +258,20 @@ def count_parameters(model):
 if __name__ == '__main__':
     input = (112, 112)
     num_emb = 512
+    defian_layer = False
     img = torch.randn(1, 3, 112, 112)
 
-    vit = mobilevit_xxs(input, num_emb)
+    vit = mobilevit_xxs(input, num_emb, defian_layer)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))
 
-    vit = mobilevit_xs(input, num_emb)
+    vit = mobilevit_xs(input, num_emb, defian_layer)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))
 
-    vit = mobilevit_s(input, num_emb)
+    vit = mobilevit_s(input, num_emb, defian_layer)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))
