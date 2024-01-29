@@ -46,8 +46,8 @@ def get_config(args):
     assert args.net in ['xxs', 'xs', 's']
     configuration['BACKBONE_NAME'] = args.net
     
-    assert args.head in ['adaface', 'arcface', 'cosface']
-    configuration['HEAD_NAME'] = args.head
+    assert args.loss_type in ['adaface', 'arcface', 'cosface']
+    configuration['HEAD_NAME'] = args.loss_type
     
     configuration['DEFIAN_LAYER'] = args.defian
     configuration['TARGET'] = [i for i in args.target.split(',')]

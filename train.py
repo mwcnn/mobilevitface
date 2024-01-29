@@ -49,8 +49,8 @@ if __name__ == '__main__':
                         help="use which database, ['casia', 'casia_mod', 'retina', 'itb_face']", type=str)
     parser.add_argument("-n", "--net", default='s',
                         help="which network, ['xxs','xs', 's']", type=str)
-    parser.add_argument("-h", "--head", default='arcFace',
-                        help="head type, ['adaFace', 'arcFace', 'CosFace']", type=str)
+    parser.add_argument("-l", "--loss_type", default='arcface',
+                        help="loss type, ['adaface', 'arcface', 'cosface']", type=str)
     parser.add_argument("-t", "--target", default='lfw,talfw,calfw,cplfw,cfp_fp,agedb_30',
                         help="verification targets, ['lfw', 'talfw', 'calfw', 'cplfw', 'cfp_fp', 'agedb_30']",
                         type=str)
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                         help="resume training", type=str)
     parser.add_argument("-o", "--outdir", default='',
                         help="output dir", type=str)
-    parser.add_argument("-df", "--defian",
+    parser.add_argument("--defian",
                         help="use defian layer, True/False", action="store_true")
     
     # Optimizer parameters
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     dataset = FaceDataset(os.path.join(DATA_ROOT, 'train.rec'), rand_mirror=True)
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=len(GPU_ID), drop_last=True)
     
-    TOTAL_TRAIN_DATA = len(trainloader)
+    TOTAL_TRAIN_DATA = len(dataset)
     
     print("Number of Training Classes: {}".format(NUM_CLASS))
     print("Total Training Data: {}".format(TOTAL_TRAIN_DATA))

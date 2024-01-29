@@ -179,7 +179,7 @@ class MobileViT(nn.Module):
         if self.defian_layer:
             self.defian = DeFian(32, 4, 5, act=nn.ReLU(True), attention=True, scale=[2])
         else:
-            self.defian = self.dummy_function()
+            self.defian = self.dummy_function
 
         self.conv1 = conv_nxn_bn(3, channels[0], stride=2)
 
