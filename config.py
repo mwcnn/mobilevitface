@@ -6,7 +6,7 @@ from IPython import embed
 def get_config(args):
     configuration = dict(
         SEED = 1337,  # random seed for reproduce results
-        INPUT_SIZE = (112, 112),  # support: (112, 112) and (224, 224) for Defian
+        INPUT_SIZE = (112, 112),  # support: (128, 128) and (256, 256) for Defian
         EMBEDDING_SIZE = 512,  # feature dimension
         DISP_FREQ = 50,
         VER_FREQ = 1000,

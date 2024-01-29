@@ -20,7 +20,7 @@ def get_time():
     return (str(datetime.now())[:-10]).replace(' ', '-').replace(':', '-')
 
 
-def load_bin(path, image_size=[112, 112]):
+def load_bin(path, image_size=(128, 128)):
     bins, issame_list = pickle.load(open(path, 'rb'), encoding='bytes')
     data_list = []
     for flip in [0,1]:
@@ -42,20 +42,20 @@ def load_bin(path, image_size=[112, 112]):
     return data_list, issame_list
 
 
-def get_val_pair(path, name):
+def get_val_pair(path, name, image_size):
     ver_path = os.path.join(path,name + ".bin")
     print(ver_path)
     assert os.path.exists(ver_path)
-    data_set, issame = load_bin(ver_path)
+    data_set, issame = load_bin(ver_path, image_size)
     print('ver', name)
     return data_set, issame
 
 
-def get_val_data(data_path, targets):
+def get_val_data(data_path, targets, image_size):
     assert len(targets) > 0
     vers = []
     for t in targets:
-        data_set, issame = get_val_pair(data_path, t)
+        data_set, issame = get_val_pair(data_path, t, image_size)
         vers.append([t, data_set, issame])
     return vers
 
@@ -162,13 +162,13 @@ def perform_val(multi_gpu, device, embedding_size, batch_size, backbone, data_se
             while idx + batch_size <= len(carray):
                 batch = carray[idx:idx + batch_size]
                 #last_time = time.time()
-                embeddings[idx:idx + batch_size] = backbone(batch.to(device)).cpu()
+                embeddings[idx:idx + batch_size] = backbone(batch.to(device))[0].cpu()
                 #batch_time = time.time() - last_time
                 #print("batch_time", batch_size, batch_time)
                 idx += batch_size
             if idx < len(carray):
                 batch = carray[idx:]
-                embeddings[idx:] = backbone(batch.to(device)).cpu()
+                embeddings[idx:] = backbone(batch.to(device))[0].cpu()
         embeddings_list.append(embeddings)
 
     _xnorm = 0.0
@@ -217,7 +217,7 @@ def perform_val_deit(multi_gpu, device, embedding_size, batch_size, backbone, di
                 idx += batch_size
             if idx < len(carray):
                 batch = carray[idx:]
-                embeddings[idx:] = backbone(batch.to(device)).cpu()
+                embeddings[idx:] = backbone(batch.to(device))[0].cpu()
         embeddings_list.append(embeddings)
 
     _xnorm = 0.0

@@ -28,8 +28,9 @@ from IPython import embed
 
 
 class FaceDataset(data.Dataset):
-    def __init__(self, path_imgrec, rand_mirror):
+    def __init__(self, path_imgrec, rand_mirror, target_size=(256, 256)):
         self.rand_mirror = rand_mirror
+        self.target_size = target_size
         assert path_imgrec
         if path_imgrec:
             logging.info('loading recordio %s...',
@@ -67,6 +68,10 @@ class FaceDataset(data.Dataset):
         if not isinstance(label, numbers.Number):
             label = label[0]
         _data = mx.image.imdecode(s)
+
+        # Apply resizing
+        _data = self.transform(_data)
+        
         if self.rand_mirror:
             _rd = random.randint(0, 1)
             if _rd == 1:
@@ -77,6 +82,10 @@ class FaceDataset(data.Dataset):
         img = torch.from_numpy(_data)
 
         return img, label
+
+    def transform(self, img):
+        img_resized = mx.image.imresize(img, self.target_size[1], self.target_size[0])
+        return img_resized
 
     def __len__(self):
         return len(self.seq)

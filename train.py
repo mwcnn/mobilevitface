@@ -115,7 +115,7 @@ if __name__ == '__main__':
     BACKBONE_NAME = cfg['BACKBONE_NAME'] # support:  ['xxs', 'xs', 's']
     HEAD_NAME = cfg['HEAD_NAME'] # support:  ['adaface', 'arcface', 'cosface']
     DEFIAN_LAYER = cfg['DEFIAN_LAYER'] # Use Defian layer or no
-    INPUT_SIZE = cfg['INPUT_SIZE'] # support:  (112, 112), (224, 224)
+    INPUT_SIZE = cfg['INPUT_SIZE'] # support:  (128, 128), (256, 256)
     EMBEDDING_SIZE = cfg['EMBEDDING_SIZE']
     DISP_FREQ = cfg['DISP_FREQ']
     VER_FREQ = cfg['VER_FREQ']
@@ -139,12 +139,14 @@ if __name__ == '__main__':
     
     with open(os.path.join(DATA_ROOT, 'property'), 'r') as f:
         NUM_CLASS, h, w = [int(i) for i in f.read().split(',')]
-       
-    if DEFIAN_LAYER: 
-        # Change h and w to x2 because we use DeFian with 2x scale    
-        assert h*2 == INPUT_SIZE[0] and w*2 == INPUT_SIZE[1]
+        
+    image_height, image_width = INPUT_SIZE
+    
+    if DEFIAN_LAYER:
+        image_height = image_height / 2
+        image_width = image_width / 2
 
-    dataset = FaceDataset(os.path.join(DATA_ROOT, 'train.rec'), rand_mirror=True)
+    dataset = FaceDataset(os.path.join(DATA_ROOT, 'train.rec'), rand_mirror=True, target_size=(image_width, image_height))
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=len(GPU_ID), drop_last=True)
     
     TOTAL_TRAIN_DATA = len(dataset)
@@ -152,7 +154,7 @@ if __name__ == '__main__':
     print("Number of Training Classes: {}".format(NUM_CLASS))
     print("Total Training Data: {}".format(TOTAL_TRAIN_DATA))
 
-    vers = get_val_data(EVAL_PATH, TARGET)
+    vers = get_val_data(EVAL_PATH, TARGET, INPUT_SIZE)
     highest_acc = [0.0 for t in TARGET]
     
     #======= model & loss & optimizer =======#
@@ -170,7 +172,7 @@ if __name__ == '__main__':
     print("=" * 60)
     
     # NLLLoss
-    NLLLOSS = nn.CrossEntropyLoss().to(DEVICE)
+    NLLLOSS = nn.CrossEntropyLoss()
     # IdentityLoss
     LMCL_LOSS = head.build_head(head_type=HEAD_NAME,
                                 embedding_size=EMBEDDING_SIZE,
@@ -181,7 +183,6 @@ if __name__ == '__main__':
     
     # All Optimizer
     OPTIMIZER = create_optimizer(args, MVIT)
-    print("=" * 60)
     print(OPTIMIZER)
     print("Optimizer Generated")
     print("=" * 60)
@@ -203,14 +204,13 @@ if __name__ == '__main__':
         MVIT = nn.DataParallel(MVIT, device_ids = GPU_ID)
         MVIT = MVIT.to(DEVICE)
         LMCL_LOSS = nn.DataParallel(LMCL_LOSS, device_ids = GPU_ID)
-        LMCL_LOSS = LMCL_LOSS.to(DEVICE)
+        # LMCL_LOSS = LMCL_LOSS.to(DEVICE)
     else:
         # single-GPU setting
         MVIT = MVIT.to(DEVICE)
-        LMCL_LOSS = LMCL_LOSS.to(DEVICE)
+        # LMCL_LOSS = LMCL_LOSS.to(DEVICE)
     
-    IH, IW = INPUT_SIZE
-    summary(MVIT, (3, IH, IW))
+    summary(MVIT, (3, image_width, image_height))
     
     #======= train & validation & save checkpoint =======#
 
@@ -229,7 +229,7 @@ if __name__ == '__main__':
             inputs = inputs.to(DEVICE)
             labels = labels.to(DEVICE).long()
 
-            outputs, norms = MVIT(inputs.float(), labels)
+            outputs, norms = MVIT(inputs.float())
             
             mlogits = criterion[1](outputs, norms, labels)
             loss = criterion[0](mlogits, labels)
@@ -247,7 +247,7 @@ if __name__ == '__main__':
             OPTIMIZER.step()
             
             # dispaly training loss & acc every DISP_FREQ (buffer for visualization)
-            if (((batch + 1) % DISP_FREQ == 0) and batch != 0) or (batch == ((TOTAL_TRAIN_DATA / BATCH_SIZE) * NUM_EPOCH)):
+            if (((batch + 1) % DISP_FREQ == 0) and batch != 0) or (batch == (int(TOTAL_TRAIN_DATA / BATCH_SIZE) * NUM_EPOCH)):
                 epoch_loss = losses.avg
                 epoch_acc = top1.avg
                 writer.add_scalar("Training/Training_Loss", epoch_loss, batch + 1)
