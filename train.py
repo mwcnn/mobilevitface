@@ -58,8 +58,6 @@ if __name__ == '__main__':
                         help="resume training", type=str)
     parser.add_argument("-o", "--outdir", default='',
                         help="output dir", type=str)
-    parser.add_argument("--defian",
-                        help="use defian layer, True/False", action="store_true")
     
     # Optimizer parameters
     parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
@@ -114,7 +112,6 @@ if __name__ == '__main__':
     BACKBONE_RESUME_ROOT = cfg['BACKBONE_RESUME_ROOT'] # the root to resume training from a saved checkpoint
     BACKBONE_NAME = cfg['BACKBONE_NAME'] # support:  ['xxs', 'xs', 's']
     HEAD_NAME = cfg['HEAD_NAME'] # support:  ['adaface', 'arcface', 'cosface']
-    DEFIAN_LAYER = cfg['DEFIAN_LAYER'] # Use Defian layer or no
     INPUT_SIZE = cfg['INPUT_SIZE'] # support:  (128, 128), (256, 256)
     EMBEDDING_SIZE = cfg['EMBEDDING_SIZE']
     DISP_FREQ = cfg['DISP_FREQ']
@@ -139,14 +136,8 @@ if __name__ == '__main__':
     
     with open(os.path.join(DATA_ROOT, 'property'), 'r') as f:
         NUM_CLASS, h, w = [int(i) for i in f.read().split(',')]
-        
-    image_height, image_width = INPUT_SIZE
-    
-    if DEFIAN_LAYER:
-        image_height = image_height / 2
-        image_width = image_width / 2
 
-    dataset = FaceDataset(os.path.join(DATA_ROOT, 'train.rec'), rand_mirror=True, target_size=(image_width, image_height))
+    dataset = FaceDataset(os.path.join(DATA_ROOT, 'train.rec'), rand_mirror=True, target_size=INPUT_SIZE)
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=len(GPU_ID), drop_last=True)
     
     TOTAL_TRAIN_DATA = len(dataset)
@@ -159,11 +150,11 @@ if __name__ == '__main__':
     
     #======= model & loss & optimizer =======#
     if BACKBONE_NAME == "xxs":
-        MVIT = mobilevit.mobilevit_xxs(INPUT_SIZE, EMBEDDING_SIZE, DEFIAN_LAYER)
+        MVIT = mobilevit.mobilevit_xxs(INPUT_SIZE, EMBEDDING_SIZE)
     elif BACKBONE_NAME == "xs":
-        MVIT = mobilevit.mobilevit_xs(INPUT_SIZE, EMBEDDING_SIZE, DEFIAN_LAYER)
+        MVIT = mobilevit.mobilevit_xs(INPUT_SIZE, EMBEDDING_SIZE)
     elif BACKBONE_NAME == "s":
-        MVIT = mobilevit.mobilevit_s(INPUT_SIZE, EMBEDDING_SIZE, DEFIAN_LAYER)
+        MVIT = mobilevit.mobilevit_s(INPUT_SIZE, EMBEDDING_SIZE)
     else:
         raise ValueError("Only support mobilevit [xxs/xs/s]")
     
@@ -204,17 +195,18 @@ if __name__ == '__main__':
         MVIT = nn.DataParallel(MVIT, device_ids = GPU_ID)
         MVIT = MVIT.to(DEVICE)
         LMCL_LOSS = nn.DataParallel(LMCL_LOSS, device_ids = GPU_ID)
-        # LMCL_LOSS = LMCL_LOSS.to(DEVICE)
+        # LMCL_LOSS = LMCL_LOSS.to(DEVICE) # For AdaFace
     else:
         # single-GPU setting
         MVIT = MVIT.to(DEVICE)
-        # LMCL_LOSS = LMCL_LOSS.to(DEVICE)
+        # LMCL_LOSS = LMCL_LOSS.to(DEVICE) # For AdaFace
     
-    summary(MVIT, (3, image_width, image_height))
+    summary(MVIT, (3, INPUT_SIZE[0], INPUT_SIZE[1]))
     
     #======= train & validation & save checkpoint =======#
 
     batch = 0  # batch index
+    total_step = int(TOTAL_TRAIN_DATA / BATCH_SIZE) * NUM_EPOCH
 
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -236,7 +228,7 @@ if __name__ == '__main__':
             
             #print("outputs", outputs, outputs.data)
             # measure accuracy and record loss
-            prec1= train_accuracy(outputs.data, labels, topk = (1,))
+            prec1= train_accuracy(mlogits.data, labels, topk = (1,))
 
             losses.update(loss.data.item(), inputs.size(0))
             top1.update(prec1.data.item(), inputs.size(0))
@@ -247,7 +239,7 @@ if __name__ == '__main__':
             OPTIMIZER.step()
             
             # dispaly training loss & acc every DISP_FREQ (buffer for visualization)
-            if (((batch + 1) % DISP_FREQ == 0) and batch != 0) or (batch == (int(TOTAL_TRAIN_DATA / BATCH_SIZE) * NUM_EPOCH)):
+            if ((((batch + 1) % DISP_FREQ == 0) and batch != 0) or (batch == total_step - 1)):
                 epoch_loss = losses.avg
                 epoch_acc = top1.avg
                 writer.add_scalar("Training/Training_Loss", epoch_loss, batch + 1)
@@ -256,11 +248,11 @@ if __name__ == '__main__':
                 batch_time = time.time() - last_time
                 last_time = time.time()
 
-                print('Epoch {} Batch {}\t'
+                print('Epoch {} Batch {}/{}\t'
                       'Speed: {speed:.2f} samples/s\t'
                       'Training Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                       'Training Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    epoch + 1, batch + 1, speed=inputs.size(0) * DISP_FREQ / float(batch_time),
+                    epoch + 1, batch + 1, total_step, speed=inputs.size(0) * DISP_FREQ / float(batch_time),
                     loss=losses, top1=top1))
                 #print("=" * 60)
                 losses = AverageMeter()

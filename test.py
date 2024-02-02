@@ -18,16 +18,12 @@ def main(args):
     with open(os.path.join(DATA_ROOT, 'property'), 'r') as f:
         NUM_CLASS, h, w = [int(i) for i in f.read().split(',')]
         
-    if args.defian_layer:
-        h = h*2
-        w = w*2
-        
     if args.network == "xxs":
-        model = mobilevit.mobilevit_xxs((h, w), 512, args.defian_layer)
+        model = mobilevit.mobilevit_xxs((args.input_size, args.input_size), 512)
     elif args.network == "xs":
-        model = mobilevit.mobilevit_xs((h, w), 512, args.defian_layer)
+        model = mobilevit.mobilevit_xs((args.input_size, args.input_size), 512)
     elif args.network == "s":
-        model = mobilevit.mobilevit_s((h, w), 512, args.defian_layer)
+        model = mobilevit.mobilevit_s((args.input_size, args.input_size), 512)
     else:
         raise ValueError("Only support mobilevit [xxs/xs/s]")
 
@@ -68,12 +64,12 @@ def parse_arguments(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="", 
                         help="model path", type=str)
+    parser.add_argument("--input_size", type=int, default=128, 
+                        help="Only support 128 or 256")
     parser.add_argument("--data", default="./Data/ms1m-retinaface-t1/",
                         help="training set directory", type=str)
-    parser.add_argument("--network", default="xxs",
+    parser.add_argument("--network", default="xs",
                         help="which network, ['xxs','xs', 's']", type=str)
-    parser.add_argument("--defian", action="store_true",
-                        help="use defian layer, True/False")
     parser.add_argument("--target", default="lfw,talfw,sllfw,calfw,cplfw,cfp_fp,agedb_30",
                         help="verification targets", type=str)
     parser.add_argument("--batch_size", type=int, default=20, 

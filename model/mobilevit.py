@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 
 from einops import rearrange
-from .defian import Generator as DeFian
 
 
 def conv_1x1_bn(inp, oup):
@@ -166,7 +165,7 @@ class MobileViTBlock(nn.Module):
 
 
 class MobileViT(nn.Module):
-    def __init__(self, image_size, dims, channels, num_emb, defian_layer, expansion=4,
+    def __init__(self, image_size, dims, channels, num_emb, expansion=4,
                  kernel_size=3, patch_size=(2, 2)):
         super().__init__()
         ih, iw = image_size
@@ -174,12 +173,6 @@ class MobileViT(nn.Module):
         assert ih % ph == 0 and iw % pw == 0
 
         L = [2, 4, 3]
-        
-        self.defian_layer = defian_layer
-        if self.defian_layer:
-            self.defian = DeFian(32, 4, 5, act=nn.ReLU(True), attention=True, scale=[2])
-        else:
-            self.defian = self.dummy_function
 
         self.conv1 = conv_nxn_bn(3, channels[0], stride=2)
 
@@ -201,9 +194,6 @@ class MobileViT(nn.Module):
 
         self.pool = nn.AvgPool2d(ih//32, 1)
         self.fc = nn.Linear(channels[-1], num_emb, bias=False)
-        
-    def dummy_function(self, x):
-        return x
 
     def forward(self, x):
         x = self.defian(x)
@@ -233,22 +223,22 @@ class MobileViT(nn.Module):
         return x, norm
 
 
-def mobilevit_xxs(input, num_emb, defian_layer):
+def mobilevit_xxs(input, num_emb):
     dims = [64, 80, 96]
     channels = [16, 16, 24, 24, 48, 48, 64, 64, 80, 80, 320]
-    return MobileViT(input, dims, channels, num_emb, defian_layer, expansion=2)
+    return MobileViT(input, dims, channels, num_emb, expansion=2)
 
 
-def mobilevit_xs(input, num_emb, defian_layer):
+def mobilevit_xs(input, num_emb):
     dims = [96, 120, 144]
     channels = [16, 32, 48, 48, 64, 64, 80, 80, 96, 96, 384]
-    return MobileViT(input, dims, channels, num_emb, defian_layer)
+    return MobileViT(input, dims, channels, num_emb)
 
 
-def mobilevit_s(input, num_emb, defian_layer):
+def mobilevit_s(input, num_emb):
     dims = [144, 192, 240]
     channels = [16, 32, 64, 64, 96, 96, 128, 128, 160, 160, 640]
-    return MobileViT(input, dims, channels, num_emb, defian_layer)
+    return MobileViT(input, dims, channels, num_emb)
 
 
 def count_parameters(model):
@@ -256,22 +246,21 @@ def count_parameters(model):
 
 
 if __name__ == '__main__':
-    input = (112, 112)
+    input = (128, 128)
     num_emb = 512
-    defian_layer = False
-    img = torch.randn(1, 3, 112, 112)
+    img = torch.randn(1, 3, 128, 128)
 
-    vit = mobilevit_xxs(input, num_emb, defian_layer)
+    vit = mobilevit_xxs(input, num_emb)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))
 
-    vit = mobilevit_xs(input, num_emb, defian_layer)
+    vit = mobilevit_xs(input, num_emb)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))
 
-    vit = mobilevit_s(input, num_emb, defian_layer)
+    vit = mobilevit_s(input, num_emb)
     out, norm = vit(img)
     print(out.shape)
     print(count_parameters(vit))

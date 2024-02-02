@@ -6,10 +6,10 @@ from IPython import embed
 def get_config(args):
     configuration = dict(
         SEED = 1337,  # random seed for reproduce results
-        INPUT_SIZE = (112, 112),  # support: (128, 128) and (256, 256) for Defian
+        INPUT_SIZE = (128, 128),  # support: (128, 128) and (256, 256)
         EMBEDDING_SIZE = 512,  # feature dimension
         DISP_FREQ = 50,
-        VER_FREQ = 1000,
+        VER_FREQ = 2000,
     )
 
     if args.workers_id == 'cpu' or not torch.cuda.is_available():
@@ -49,7 +49,6 @@ def get_config(args):
     assert args.loss_type in ['adaface', 'arcface', 'cosface']
     configuration['HEAD_NAME'] = args.loss_type
     
-    configuration['DEFIAN_LAYER'] = args.defian
     configuration['TARGET'] = [i for i in args.target.split(',')]
 
     if args.resume:
